@@ -1,14 +1,17 @@
-CC=gcc
-CFLAGS=-Wall -Wextra
-SOURCES=*.c
-OBJECTS=$(SOURCES:.c:.o)
-EXECUTABLE=nsh
+CC = gcc
+LD = ld
+CFLAGS =-Wall -Wextra -g
+SOURCES = *.c
+EXECUTABLE = nsh
 
-build: $(SOURCES)
-	$(CC) -o $(EXECUTABLE) $(SOURCES)
+build: $(OBJECTS)
+	$(CC) $(CFLAGS) -o $(EXECUTABLE) $(SOURCES) 
 
 clean:
 	rm *.o $(EXECUTABLE)
 
 test:
 	./$(EXECUTABLE)
+
+mem:
+	valgrind --leak-check=yes ./$(EXECUTABLE)
