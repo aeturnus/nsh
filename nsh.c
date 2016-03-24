@@ -7,6 +7,7 @@
 #include <dirent.h>
 
 #include <sys/types.h>
+#include <sys/stat.h>
 
 #include "tok.h"
 #include "vvector.h"
@@ -15,7 +16,7 @@
 pid_t pid;
 char* cwd;
 char* promptString = "# ";
-char* execPath = 0;
+VVector* pathDirs;
 
 void print_prompt()
 {
@@ -27,7 +28,9 @@ void sigtstp_handler(int signum)
     printf("fuck you, i ain't stopping\n");
     print_prompt();
 }
-
+////////////////////////
+//  helper functions  //
+////////////////////////
 #define BUFFSIZE 128
 char* read_line()
 {
@@ -78,20 +81,91 @@ void readToken(Tokenizer* tokenizer, char** strPtr)
     *strPtr = Tokenizer_next(tokenizer);
 }
 
+char* findExecutable(char* file)
+{
+    int len = VVector_length(pathDirs);
+    char* output = 0x0;
+    int fileLen = strlen(file);
+    int dirLen; //length of path directory
+    char* dir;  //path directory
+    char* path; //final path
+    struct stat *buf = malloc(sizeof(struct stat));   //just to use stat with
+    int ret;   //stat's retval; init with state of failure
+
+    //same dir check
+    if(file[0] == '.')
+    {
+        //Get the full path
+        dir = cwd;
+        dirLen = strlen(dir);
+        path = malloc(dirLen + fileLen + 2);    // 1 for slash, 1 for null
+        strncpy(path,dir,dirLen+1);
+        strcat(path,"/");
+        strcat(path,file);
+        //Check if the file even exists
+        ret = stat(path,buf);
+        if(ret == 0)
+        {
+            output = path;
+            free(buf);
+            return output;
+        }
+    }
+
+    for(int i = 0; i < len; i++)
+    {
+        //Get the full path
+        dir = VVector_get(pathDirs,i);
+        dirLen = strlen(dir);
+        path = malloc(dirLen + fileLen + 2);    // 1 for slash, 1 for null
+        strncpy(path,dir,dirLen+1); //+1 for nullchar
+        strcat(path,"/");
+        strcat(path,file);
+        //Check if the file even exists
+        ret = stat(path,buf);
+        if(ret == 0)
+        {
+            output = path;
+            break;
+        }
+        else if (ret == -1)
+        {
+            free(path); //path isn't good anymore
+        }
+
+    }
+    free(buf);
+
+    return output;
+}
+
+
+////////////////////////
+////////////////////////
+
 /////////////////////////
 //  utility functions  //
 /////////////////////////
 
 void executeProgram(char* path, char** args)
 {
-    execPath = strdup(path);
+    char* execPath = strdup(path);
     pid = fork();
     if(pid == 0)
     {
         printf("Forked; executing %s\n",execPath);
         execvp(execPath,args);
-        free(execPath);
     }
+    else if(pid ==-1)
+    {
+        printf("shit's fucked yo\n");
+    }
+    else
+    {
+        int status;
+        waitpid(pid,&status,0);
+    }
+    free(execPath);
 }
 
 void changeDirectory(char* dir)
@@ -192,8 +266,17 @@ void echo(Tokenizer* tok)
 void exec(Tokenizer* tok)
 {
     char* str = Tokenizer_next(tok);
-    executeProgram(str,0);
+    char* path = findExecutable(str);
+    if(path != 0)
+    {
+        executeProgram(path,0);
+    }
+    else
+    {
+        printf("\"%s\" is not a recognized command",str);
+    }
     free(str);
+    free(path);
 }
 
 //////////////////////////
@@ -227,7 +310,16 @@ int runCommand(Tokenizer* tok)
     }
     else
     {
-        printf("\"%s\" is not a recognized command",token);
+        char* path = findExecutable(token);
+        if(path != 0)
+        {
+            executeProgram(path,0);
+        }
+        else
+        {
+            printf("\"%s\" is not a recognized command",token);
+        }
+        free(path);
     }
 
     free(token);    //clean up
@@ -237,11 +329,26 @@ int runCommand(Tokenizer* tok)
 
 int main()
 {
-    printf("%s\n",getenv("PATH"));  //
-
     //set up the cwd variable
     cwd = malloc(CWD_BUFF_SIZE * sizeof(char));
     getcwd(cwd,CWD_BUFF_SIZE);  //TODO:error check
+
+    //setup vector for path
+    Tokenizer* dirTok = Tokenizer_new(getenv("PATH"),":");  //get tokenizer
+    pathDirs = VVector_new(Tokenizer_countTokens(dirTok)+1);    //+1 to account for /bin
+    char* bindir = strdup("/bin");
+    VVector_push(pathDirs,bindir);
+    while(Tokenizer_hasTokens(dirTok))
+    {
+        VVector_push(pathDirs,Tokenizer_next(dirTok));  //populate the vector
+    }
+    Tokenizer_delete(dirTok);
+
+    int len = VVector_length(pathDirs);
+    for(int i = 0; i < len; i++)
+    {
+        printf("Path: %s\n",VVector_get(pathDirs,i));
+    }
 
     signal(SIGTSTP, sigtstp_handler);
     char* line;

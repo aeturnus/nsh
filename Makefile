@@ -15,3 +15,6 @@ test:
 
 mem:
 	valgrind --leak-check=yes ./$(EXECUTABLE)
+
+debug:
+	gdb ./$(EXECUTABLE)
