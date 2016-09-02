@@ -42,7 +42,7 @@ char* read_line()
     {
         //Read character
         c = getchar();
-        
+
         if(c == EOF || c == '\n')
         {
             buffer[pos] = '\0';
@@ -50,7 +50,7 @@ char* read_line()
         }
         else if (c == "\027")   //escape character detection
         {
-            
+
         }
         else
         {
@@ -153,7 +153,15 @@ void executeProgram(char* path, char** args)
     pid = fork();
     if(pid == 0)
     {
-        printf("Forked; executing %s\n",execPath);
+        printf("Forked; executing %s",execPath);
+        /*
+        char *cur;
+        for(int i = 0, cur = args[0]; cur != NULL; cur = args[i], i++)
+        {
+            printf(" %s",cur);
+        }
+        printf("\n");
+        */
         execvp(execPath,args);
     }
     else if(pid ==-1)
@@ -188,7 +196,7 @@ void changeDirectory(char* dir)
     //printf("changedir: %s",newPath);
     chdir(newPath);
     getcwd(cwd,CWD_BUFF_SIZE);  //TODO:error check
-    
+
     free(newPath);
 }
 
@@ -214,7 +222,7 @@ void cd(Tokenizer* tok)
         printf("Cannot handle more than one entry");
     }
 }
-
+/*
 void ls(Tokenizer* tok)
 {
     //Source the path
@@ -262,7 +270,7 @@ void echo(Tokenizer* tok)
     printf("%s",strOut);
     free(strOut);
 }
-
+*/
 void exec(Tokenizer* tok)
 {
     char* str = Tokenizer_next(tok);
@@ -282,6 +290,19 @@ void exec(Tokenizer* tok)
 //////////////////////////
 //////////////////////////
 
+char **consumeArgs(Tokenizer *tok)
+{
+    int numArgs = Tokenizer_countTokens(tok);
+    char **out = (char **) malloc( sizeof(char*) * numArgs + 1);
+    for( int i = 0; i < numArgs; i++ )
+    {
+        out[i] = Tokenizer_next(tok);
+        printf("Arg #%d: %s\n", i, out[i]);
+    }
+    out[numArgs] = NULL;
+    return out;
+}
+
 int runCommand(Tokenizer* tok)
 {
     char* token = 0;
@@ -296,24 +317,30 @@ int runCommand(Tokenizer* tok)
     {
         cd(tok);
     }
+    /*
     else if(strcmp(token,"ls") == 0)
     {
         ls(tok);
     }
+    */
     else if(strcmp(token,"exec") == 0)
     {
         exec(tok);
     }
+    /*
     else if(strcmp(token,"echo") == 0)
     {
         echo(tok);
     }
+    */
     else
     {
         char* path = findExecutable(token);
         if(path != 0)
         {
-            executeProgram(path,0);
+            char **args = consumeArgs(tok);
+            executeProgram(path,args);
+            free(args);
         }
         else
         {
@@ -360,7 +387,7 @@ int main()
     {
         print_prompt();
         line = read_line();
-        
+
         tokenizer = Tokenizer_new(line, " ");
         if(Tokenizer_hasTokens(tokenizer))
         {
@@ -369,7 +396,7 @@ int main()
 
         free(line);                     //Might keep for history?
         Tokenizer_delete(tokenizer);    //we don't need them anymore;
-        
+
         printf("\n");   //newline
     }
 }
