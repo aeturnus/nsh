@@ -1,11 +1,21 @@
 CC = gcc
 LD = ld
-CFLAGS =-Wall -Wextra -g
-SOURCES = *.c
+CFLAGS =-Wall -Wextra
+SOURCES = $(wildcard *.c)
 EXECUTABLE = nsh
 
-build: $(OBJECTS)
-	$(CC) $(CFLAGS) -o $(EXECUTABLE) $(SOURCES) 
+
+OBJECTS = $(SOURCES:.c=.o)
+
+.c.o:
+	$(CC) $(CFLAGS) $(INCLUDES) -c $< -o $@
+
+$(EXECUTABLE): $(OBJECTS)
+	$(CC) $(CFLAGS) -o $(EXECUTABLE) $(OBJECTS) 
+
+
+all: $(EXECUTABLE)
+	@echo "Program built"
 
 clean:
 	rm *.o $(EXECUTABLE)

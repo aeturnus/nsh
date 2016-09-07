@@ -25,7 +25,7 @@ void print_prompt()
 
 void sigtstp_handler(int signum)
 {
-    printf("fuck you, i ain't stopping\n");
+    printf("screw you, i'm not stopping\n");
     print_prompt();
 }
 ////////////////////////
@@ -191,7 +191,7 @@ void changeDirectory(char* dir)
         newPath = malloc(cwdLen + dirLen + 2);    // 1 for the slash, 1 for the null
         strncpy(newPath,cwd,cwdLen);    // copy the cwd
         strcat(newPath,"/");            // add the slash
-        strcat(newPath, dir);
+	strcat(newPath, dir);
     }
     //printf("changedir: %s",newPath);
     chdir(newPath);
